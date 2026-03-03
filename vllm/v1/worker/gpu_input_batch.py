@@ -191,6 +191,7 @@ class InputBatch:
         self.temperature_cpu = self.temperature_cpu_tensor.numpy()
         self.greedy_reqs: set[str] = set()
         self.random_reqs: set[str] = set()
+        self.entropy_reqs: set[str] = set()
 
         self.top_p = torch.empty((max_num_reqs,), dtype=torch.float32, device=device)
         self.top_p_cpu_tensor = torch.empty(
@@ -420,9 +421,14 @@ class InputBatch:
                     else sampling_params.logprobs
                 )
 
+<<<<<<< HEAD
             # Store specific token IDs to compute logprobs for (more efficient)
             if sampling_params.logprob_token_ids is not None:
                 self.logprob_token_ids[req_id] = sampling_params.logprob_token_ids
+=======
+            if sampling_params.output_exact_entropy:
+                self.entropy_reqs.add(req_id)
+>>>>>>> 4cf559d7e (return logprob entropy memory efficient)
 
             if sampling_params.allowed_token_ids:
                 self.has_allowed_token_ids.add(req_id)
@@ -545,6 +551,7 @@ class InputBatch:
 
         self.greedy_reqs.discard(req_id)
         self.random_reqs.discard(req_id)
+        self.entropy_reqs.discard(req_id)
         self.top_p_reqs.discard(req_id)
         self.top_k_reqs.discard(req_id)
         self.frequency_penalties_reqs.discard(req_id)
@@ -931,7 +938,11 @@ class InputBatch:
             allowed_token_ids_mask=allowed_token_ids_mask,
             bad_words_token_ids=self.bad_words_token_ids,
             logitsprocs=self.logitsprocs,
+<<<<<<< HEAD
             thinking_budget_state_holder=self.thinking_budget_state_holder,
+=======
+            any_output_exact_entropy=self.any_output_exact_entropy,
+>>>>>>> 4cf559d7e (return logprob entropy memory efficient)
         )
 
     def get_pooling_params(self) -> list[PoolingParams]:
@@ -1121,6 +1132,10 @@ class InputBatch:
     @property
     def max_num_logprobs(self) -> int | None:
         return max(self.num_logprobs.values()) if self.num_logprobs else None
+
+    @property
+    def any_output_exact_entropy(self) -> bool:
+        return len(self.entropy_reqs) > 0
 
     @property
     def no_allowed_token_ids(self) -> bool:

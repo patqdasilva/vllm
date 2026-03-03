@@ -50,6 +50,12 @@ class SamplingMetadata:
 
     # Speculative token ids
     spec_token_ids: list[list[int]] | None = None
+<<<<<<< HEAD
     # When non-None, use ``holder.has_tracked_requests()`` to see if this batch applies
     # thinking-token-budget logits (holder may exist with an empty tracking set).
     thinking_budget_state_holder: ThinkingBudgetStateHolder | None = None
+=======
+
+    # Whether any request in batch wants exact entropy
+    any_output_exact_entropy: bool = False
+>>>>>>> 4cf559d7e (return logprob entropy memory efficient)

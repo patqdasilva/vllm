@@ -190,6 +190,7 @@ class SamplerOutput:
     # PLACEHOLDER_TOKEN_ID (-1 by default) is used for padding.
     sampled_token_ids: torch.Tensor
     logprobs_tensors: LogprobsTensors | None
+    entropy: torch.Tensor | None = None  # [num_reqs], float32
 
 
 @dataclass
@@ -269,6 +270,7 @@ class ModelRunnerOutput:
     # information related to cudagraph execution
     cudagraph_stats: CUDAGraphStat | None = None
 
+<<<<<<< HEAD
     # Per-step routed experts data captured by the worker.
     # ``routing_data`` shape: (num_scheduled_tokens, num_layers,
     #                         num_experts_per_tok); expert IDs as uint8/uint16.
@@ -292,6 +294,10 @@ class ModelRunnerOutput:
         output = copy(EMPTY_MODEL_RUNNER_OUTPUT)
         output.kv_connector_output = kv_connector_output
         return output
+=======
+    # Per-token Shannon entropy: list[list[float]], outer=requests, inner=tokens
+    entropy: list[list[float]] | None = None
+>>>>>>> 4cf559d7e (return logprob entropy memory efficient)
 
 
 # ModelRunnerOutput wrapper for async scheduling.

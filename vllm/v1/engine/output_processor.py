@@ -149,6 +149,7 @@ class RequestState:
         n: int | None = None,
         temperature: float | None = None,
         stream_input: bool = False,
+        output_exact_entropy: bool = False,
     ):
         self.request_id = request_id
         self.external_req_id = external_req_id
@@ -187,6 +188,9 @@ class RequestState:
         self.input_chunk_queue: deque[StreamingUpdate] | None = (
             deque() if stream_input else None
         )
+
+        # Per-token entropy accumulation
+        self.entropy: list[float] | None = [] if output_exact_entropy else None
 
     def apply_streaming_update(self, update: StreamingUpdate) -> None:
         # Apply the update to the request state.
@@ -235,6 +239,7 @@ class RequestState:
             top_p = sampling_params.top_p
             n = sampling_params.n
             temperature = sampling_params.temperature
+            output_exact_entropy = sampling_params.output_exact_entropy
         else:
             logprobs_processor = None
             detokenizer = None
@@ -242,6 +247,7 @@ class RequestState:
             top_p = None
             n = None
             temperature = None
+            output_exact_entropy = False
             assert request.pooling_params is not None
             output_kind = request.pooling_params.output_kind
 
@@ -267,6 +273,7 @@ class RequestState:
             log_stats=log_stats,
             stream_interval=stream_interval,
             stream_input=request.resumable,
+            output_exact_entropy=output_exact_entropy,
         )
 
     def make_request_output(
@@ -394,10 +401,17 @@ class RequestState:
         if delta and logprobs:
             logprobs = logprobs[-len(token_ids) :]
 
+<<<<<<< HEAD
         # Concatenate routed experts on finish
         routed_experts = None
         if finished and self.routed_experts_chunks:
             routed_experts = np.concatenate(self.routed_experts_chunks, axis=0)
+=======
+        # Prepare entropy, based on delta mode
+        entropy = self.entropy
+        if delta and entropy:
+            entropy = entropy[-len(token_ids):]
+>>>>>>> 4cf559d7e (return logprob entropy memory efficient)
 
         return CompletionOutput(
             index=self.request_index,
@@ -405,6 +419,7 @@ class RequestState:
             token_ids=token_ids,
             routed_experts=routed_experts,
             logprobs=logprobs,
+            entropy=entropy,
             cumulative_logprob=self.logprobs_processor.cumulative_logprob,
             finish_reason=str(finish_reason) if finished else None,
             stop_reason=stop_reason if finished else None,
@@ -646,6 +661,11 @@ class OutputProcessor:
                 # 3) Compute sample and prompt logprobs for request,
                 # if required.
                 req_state.logprobs_processor.update_from_output(engine_core_output)
+
+                # 3b) Accumulate per-token entropy if requested.
+                if (engine_core_output.entropy is not None
+                        and req_state.entropy is not None):
+                    req_state.entropy.extend(engine_core_output.entropy)
 
             # 4) Create and handle RequestOutput objects.
             if request_output := req_state.make_request_output(

@@ -43,6 +43,7 @@ class CompletionOutput:
     cumulative_logprob: float | None
     logprobs: SampleLogprobs | None
     routed_experts: np.ndarray | None = None  # [seq_len,layer_num,topk]
+    entropy: list[float] | None = None
     finish_reason: str | None = None
     stop_reason: int | str | None = None
     lora_request: LoRARequest | None = None
@@ -56,6 +57,7 @@ class CompletionOutput:
             f"text={self.text!r}, "
             f"token_ids={self.token_ids}, "
             f"routed_experts={self.routed_experts}, "
+            f"entropy={self.entropy}, "
             f"cumulative_logprob={self.cumulative_logprob}, "
             f"logprobs={self.logprobs}, "
             f"finish_reason={self.finish_reason}, "
@@ -160,6 +162,10 @@ class RequestOutput:
                         if next_completion.logprobs:
                             assert completion.logprobs is not None
                             completion.logprobs.extend(next_completion.logprobs)  # type: ignore[arg-type]
+                        if next_completion.entropy:
+                            if completion.entropy is None:
+                                completion.entropy = []
+                            completion.entropy.extend(next_completion.entropy)
                         completion.cumulative_logprob = (
                             next_completion.cumulative_logprob
                         )

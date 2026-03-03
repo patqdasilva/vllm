@@ -287,6 +287,11 @@ class SamplingParams(
     NOTE: GC costs of FlatLogprobs is significantly smaller than
     list[dict[int, Logprob]]. After enabled, PromptLogprobs and
     SampleLogprobs would populated as FlatLogprobs."""
+    output_exact_entropy: bool = False
+    """Whether to compute and return the exact Shannon entropy
+    H = -sum(p * log(p)) of the full processed vocabulary distribution
+    for each generated token. Entropy is computed on logits after
+    temperature/penalties but before top-k/top-p truncation."""
     # NOTE: This parameter is only exposed at the engine level for now.
     # It is not exposed in the OpenAI API server, as the OpenAI API does
     # not support returning only a list of token IDs.
@@ -383,6 +388,7 @@ class SamplingParams(
         extra_args: dict[str, Any] | None = None,
         skip_clone: bool = False,
         repetition_detection: RepetitionDetectionParams | None = None,
+        output_exact_entropy: bool = False,
     ) -> "SamplingParams":
         if logit_bias is not None:
             # Convert token_id to integer
@@ -424,6 +430,7 @@ class SamplingParams(
             extra_args=extra_args,
             skip_clone=skip_clone,
             repetition_detection=repetition_detection,
+            output_exact_entropy=output_exact_entropy,
         )
 
     def __post_init__(self) -> None:
@@ -1052,6 +1059,7 @@ class SamplingParams(
             _bad_words_token_ids=[[0], [1, 2]],
             logprobs=5,
             prompt_logprobs=1,
+            output_exact_entropy=True,
         )
 
 

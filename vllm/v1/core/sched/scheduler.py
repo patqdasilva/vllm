@@ -1473,6 +1473,7 @@ class Scheduler(SchedulerInterface):
         num_nans_in_logits = model_runner_output.num_nans_in_logits
         kv_connector_output = model_runner_output.kv_connector_output
         cudagraph_stats = model_runner_output.cudagraph_stats
+        entropy = model_runner_output.entropy
 
         # Every GPU write enqueued by this and earlier steps has completed, so it is
         # safe to return deferred-free blocks to the pool.
@@ -1579,6 +1580,7 @@ class Scheduler(SchedulerInterface):
 
             stopped = False
             new_logprobs = None
+            new_entropy = None
             new_token_ids = generated_token_ids
             pooler_output = pooler_outputs[req_index] if pooler_outputs else None
             kv_transfer_params = None
@@ -1674,6 +1676,29 @@ class Scheduler(SchedulerInterface):
             ):
                 new_logprobs = logprobs.slice_request(req_index, len(new_token_ids))
 
+<<<<<<< HEAD
+=======
+            # Extract per-token entropy if needed.
+            if (
+                request.sampling_params is not None
+                and request.sampling_params.output_exact_entropy
+                and entropy is not None
+            ):
+                new_entropy = entropy[req_index]
+
+            if new_token_ids and self.structured_output_manager.should_advance(request):
+                struct_output_request = request.structured_output_request
+                assert struct_output_request is not None
+                assert struct_output_request.grammar is not None
+                ok = struct_output_request.grammar.accept_tokens(req_id, new_token_ids)
+                if not ok:
+                    logger.warning(
+                        "Unexpected: grammar rejected tokens %s for request %s.",
+                        new_token_ids,
+                        req_id,
+                    )
+
+>>>>>>> 4cf559d7e (return logprob entropy memory efficient)
             if num_nans_in_logits is not None and req_id in num_nans_in_logits:
                 request.num_nans_in_logits = num_nans_in_logits[req_id]
 
@@ -1700,6 +1725,7 @@ class Scheduler(SchedulerInterface):
                         kv_transfer_params=kv_transfer_params,
                         trace_headers=request.trace_headers,
                         routed_experts=routed_experts,
+                        entropy=new_entropy,
                         num_nans_in_logits=request.num_nans_in_logits,
                     )
                 )
