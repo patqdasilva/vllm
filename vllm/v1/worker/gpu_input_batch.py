@@ -421,14 +421,12 @@ class InputBatch:
                     else sampling_params.logprobs
                 )
 
-<<<<<<< HEAD
             # Store specific token IDs to compute logprobs for (more efficient)
             if sampling_params.logprob_token_ids is not None:
                 self.logprob_token_ids[req_id] = sampling_params.logprob_token_ids
-=======
+
             if sampling_params.output_exact_entropy:
                 self.entropy_reqs.add(req_id)
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
 
             if sampling_params.allowed_token_ids:
                 self.has_allowed_token_ids.add(req_id)
@@ -938,11 +936,8 @@ class InputBatch:
             allowed_token_ids_mask=allowed_token_ids_mask,
             bad_words_token_ids=self.bad_words_token_ids,
             logitsprocs=self.logitsprocs,
-<<<<<<< HEAD
             thinking_budget_state_holder=self.thinking_budget_state_holder,
-=======
             any_output_exact_entropy=self.any_output_exact_entropy,
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
         )
 
     def get_pooling_params(self) -> list[PoolingParams]:

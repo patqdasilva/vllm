@@ -271,7 +271,6 @@ class ModelRunnerOutput:
     # information related to cudagraph execution
     cudagraph_stats: CUDAGraphStat | None = None
 
-<<<<<<< HEAD
     # Per-step routed experts data captured by the worker.
     # ``routing_data`` shape: (num_scheduled_tokens, num_layers,
     #                         num_experts_per_tok); expert IDs as uint8/uint16.
@@ -282,6 +281,12 @@ class ModelRunnerOutput:
     # its slot buffer via ``slot_buffer[slot_mapping] = routing_data``.
     # ``None`` when ``enable_return_routed_experts`` is off.
     routed_experts: RoutedExpertsLists | None = None
+
+    # Per-token Shannon entropy: list[list[float]], outer=requests, inner=tokens
+    entropy: list[list[float]] | None = None
+
+    # Per-token variance of log-probabilities: list[list[float]]
+    variance: list[list[float]] | None = None
 
     @staticmethod
     def with_kv_conn_output_only(
@@ -295,13 +300,6 @@ class ModelRunnerOutput:
         output = copy(EMPTY_MODEL_RUNNER_OUTPUT)
         output.kv_connector_output = kv_connector_output
         return output
-=======
-    # Per-token Shannon entropy: list[list[float]], outer=requests, inner=tokens
-    entropy: list[list[float]] | None = None
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
-
-    # Per-token variance of log-probabilities: list[list[float]]
-    variance: list[list[float]] | None = None
 
 
 # ModelRunnerOutput wrapper for async scheduling.

@@ -403,22 +403,20 @@ class RequestState:
         if delta and logprobs:
             logprobs = logprobs[-len(token_ids) :]
 
-<<<<<<< HEAD
         # Concatenate routed experts on finish
         routed_experts = None
         if finished and self.routed_experts_chunks:
             routed_experts = np.concatenate(self.routed_experts_chunks, axis=0)
-=======
+
         # Prepare entropy, based on delta mode
         entropy = self.entropy
         if delta and entropy:
-            entropy = entropy[-len(token_ids):]
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
+            entropy = entropy[-len(token_ids) :]
 
         # Prepare variance, based on delta mode
         variance = self.variance
         if delta and variance:
-            variance = variance[-len(token_ids):]
+            variance = variance[-len(token_ids) :]
 
         return CompletionOutput(
             index=self.request_index,

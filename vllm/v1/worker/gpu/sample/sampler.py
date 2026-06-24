@@ -84,8 +84,6 @@ class Sampler:
         # NOTE(woosuk): We intentionally compute num_nans before sampling to make clear
         # that num_nans is computed before applying penalties and temperature.
         num_nans = get_num_nans(logits) if self.compute_nans else None
-<<<<<<< HEAD
-<<<<<<< HEAD
 
         max_num_logprobs = self.sampling_states.max_num_logprobs(idx_mapping_np)
         max_per_req_token_ids = self.logprob_token_ids_state.max_num_token_ids(
@@ -93,13 +91,7 @@ class Sampler:
         )
         return_logprobs = max_num_logprobs != NO_LOGPROBS or max_per_req_token_ids > 0
 
-        sampled, processed_logits = self.sample(
-=======
-        sampled, processed_logits, entropy = self.sample(
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
-=======
         sampled, processed_logits, entropy, variance = self.sample(
->>>>>>> 7600be7a1 (add exact analytic variance)
             logits,
             expanded_idx_mapping,
             idx_mapping_np,
@@ -146,16 +138,10 @@ class Sampler:
             sampled_token_ids=sampled.view(-1, 1),
             logprobs_tensors=logprobs_tensors,
             num_nans=num_nans,
-<<<<<<< HEAD
             num_sampled=num_sampled,
             num_rejected=num_rejected,
-=======
             entropy=entropy,
-<<<<<<< HEAD
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
-=======
             variance=variance,
->>>>>>> 7600be7a1 (add exact analytic variance)
         )
         return sampler_output
 
@@ -167,26 +153,10 @@ class Sampler:
         pos: torch.Tensor,
         input_ids: torch.Tensor,
         expanded_local_pos: torch.Tensor,
-<<<<<<< HEAD
-<<<<<<< HEAD
         skip_top_k_top_p: bool = False,
-    ) -> torch.Tensor:
-=======
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
-=======
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
->>>>>>> 7600be7a1 (add exact analytic variance)
+    ) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
         # Copy logits to a new FP32 tensor.
         logits = torch.empty_like(logits, dtype=torch.float32).copy_(logits)
-
-        # Compute entropy and variance on the raw logits (before any
-        # penalties, temperature, or truncation) so they reflect the
-        # unmodified model distribution.
-        entropy = None
-        variance = None
-        if self.sampling_states.any_wants_entropy(idx_mapping_np):
-            entropy, variance = self.compute_entropy_and_variance(logits)
 
         # Apply logit bias (e.g., allowed_token_ids, min_tokens) in place.
         self.logit_bias_state.apply_logit_bias(
@@ -219,24 +189,21 @@ class Sampler:
         # Apply min_p in place.
         self.sampling_states.apply_min_p(logits, expanded_idx_mapping, idx_mapping_np)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-        if skip_top_k_top_p:
-            return logits
-=======
-        # Compute entropy before top-k/top-p truncation.
         entropy = None
+        variance = None
         if self.sampling_states.any_wants_entropy(idx_mapping_np):
-            log_probs = logits.log_softmax(dim=-1, dtype=torch.float32)
-            probs = log_probs.exp()
-            entropy = -(probs * log_probs).sum(dim=-1)
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
+            entropy, variance = self.compute_entropy_and_variance(logits)
 
-=======
->>>>>>> 7600be7a1 (add exact analytic variance)
+        if skip_top_k_top_p:
+            return logits, entropy, variance
+
         # Apply top_k and/or top_p. This might or might not return a new tensor.
-        return self.sampling_states.apply_top_k_top_p(
-            logits, expanded_idx_mapping, idx_mapping_np
+        return (
+            self.sampling_states.apply_top_k_top_p(
+                logits, expanded_idx_mapping, idx_mapping_np
+            ),
+            entropy,
+            variance,
         )
 
     def sample(
@@ -248,8 +215,8 @@ class Sampler:
         input_ids: torch.Tensor,
         expanded_local_pos: torch.Tensor,
         return_logprobs: bool = False,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        processed_logits = self.apply_sampling_params(
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
+        processed_logits, entropy, variance = self.apply_sampling_params(
             logits,
             expanded_idx_mapping,
             idx_mapping_np,
@@ -258,8 +225,6 @@ class Sampler:
             expanded_local_pos,
             skip_top_k_top_p=True,
         )
-<<<<<<< HEAD
-<<<<<<< HEAD
         top_k, top_p = self.sampling_states.get_top_k_top_p(
             expanded_idx_mapping, idx_mapping_np
         )
@@ -287,21 +252,13 @@ class Sampler:
                 apply_temperature=False,
                 use_fp64=self.use_fp64_gumbel,
             )
-        return sampled, processed_logits
-=======
-        return sampled, logits, entropy
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
-=======
-        return sampled, logits, entropy, variance
+        return sampled, processed_logits, entropy, variance
 
     @staticmethod
     def compute_entropy_and_variance(
         logits: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Compute Shannon entropy and variance of log-probabilities.
-
-        Uses nansum so that 0 * log(0) = 0 * -inf = NaN is treated as 0.
-        """
+        """Compute Shannon entropy and variance of log-probabilities."""
         log_probs = logits.log_softmax(dim=-1, dtype=torch.float32)
         probs = log_probs.exp()
         p_log_p = probs * log_probs
@@ -310,4 +267,3 @@ class Sampler:
         var_terms = probs * (dev ** 2)
         variance = var_terms.nansum(dim=-1)
         return entropy.squeeze(-1), variance
->>>>>>> 7600be7a1 (add exact analytic variance)

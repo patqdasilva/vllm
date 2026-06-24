@@ -248,10 +248,9 @@ class AsyncGPUModelRunnerOutput(AsyncModelRunnerOutput):
         invalid_req_indices: list[int],
         async_output_copy_stream: torch.cuda.Stream,
         vocab_size: int,
-<<<<<<< HEAD
         routed_experts: RoutedExpertsTensors | None = None,
-=======
         entropy: torch.Tensor | None = None,
+        variance: torch.Tensor | None = None,
     ):
         self._model_runner_output = model_runner_output
         self._invalid_req_indices = invalid_req_indices
@@ -264,10 +263,9 @@ class AsyncGPUModelRunnerOutput(AsyncModelRunnerOutput):
         self._sampled_token_ids = sampled_token_ids
         self.vocab_size = vocab_size
         self._logprobs_tensors = logprobs_tensors
-<<<<<<< HEAD
         self._routed_experts = routed_experts
-=======
         self._entropy = entropy
+        self._variance = variance
 
         # Initiate the copy on a separate stream, but do not synchronize it.
         default_stream = torch.cuda.current_stream()
@@ -281,15 +279,14 @@ class AsyncGPUModelRunnerOutput(AsyncModelRunnerOutput):
                 if self._logprobs_tensors
                 else None
             )
-<<<<<<< HEAD
             self._routed_experts_cpu = (
                 self._routed_experts.to_cpu_nonblocking()
                 if self._routed_experts is not None
-=======
+                else None
+            )
             self._entropy_cpu = (
                 self._entropy.to("cpu", non_blocking=True)
                 if self._entropy is not None
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
                 else None
             )
             self._variance_cpu = (
@@ -310,6 +307,7 @@ class AsyncGPUModelRunnerOutput(AsyncModelRunnerOutput):
         # Release the device tensors once the copy has completed.
         del self._logprobs_tensors
         del self._sampled_token_ids
+        del self._routed_experts
         del self._entropy
         del self._variance
         if max_gen_len == 1:
@@ -327,47 +325,46 @@ class AsyncGPUModelRunnerOutput(AsyncModelRunnerOutput):
                 logprobs_tensors=self._logprobs_tensors_cpu,
             )
 
-        # Convert entropy tensor to nested lists.
         entropy_lists = None
         if self._entropy_cpu is not None:
             if max_gen_len == 1:
                 entropy_lists = [[e] for e in self._entropy_cpu.tolist()]
+                for i in self._invalid_req_indices:
+                    entropy_lists[i].clear()
             else:
                 entropy_cpu = self._entropy_cpu.tolist()
                 entropy_lists = []
                 offset = 0
                 for token_ids in valid_sampled_token_ids:
                     n = len(token_ids)
-                    entropy_lists.append(entropy_cpu[offset:offset + n])
+                    entropy_lists.append(entropy_cpu[offset : offset + n])
                     offset += n
 
-        # Convert variance tensor to nested lists.
         variance_lists = None
         if self._variance_cpu is not None:
             if max_gen_len == 1:
                 variance_lists = [[v] for v in self._variance_cpu.tolist()]
+                for i in self._invalid_req_indices:
+                    variance_lists[i].clear()
             else:
                 variance_cpu = self._variance_cpu.tolist()
                 variance_lists = []
                 offset = 0
                 for token_ids in valid_sampled_token_ids:
                     n = len(token_ids)
-                    variance_lists.append(variance_cpu[offset:offset + n])
+                    variance_lists.append(variance_cpu[offset : offset + n])
                     offset += n
 
         output = self._model_runner_output
         output.sampled_token_ids = valid_sampled_token_ids
         output.logprobs = logprobs_lists
-<<<<<<< HEAD
+        output.entropy = entropy_lists
+        output.variance = variance_lists
 
         if self._routed_experts_cpu is not None:
             output.routed_experts = self._routed_experts_cpu.tolists()
-        del self._routed_experts
 
-=======
-        output.entropy = entropy_lists
         return output
-
 
 def _copy_pooler_output_to_cpu(
     raw_pooler_output: PoolerOutput, finished_mask: list[bool]
@@ -3676,6 +3673,7 @@ class GPUModelRunner(
         dict[str, int],
         list[int],
         list[list[float]] | None,
+        list[list[float]] | None,
     ]:
         num_nans_in_logits = {}
         if envs.VLLM_COMPUTE_NANS_IN_LOGITS:
@@ -4717,10 +4715,9 @@ class GPUModelRunner(
                 else None,
                 num_nans_in_logits=num_nans_in_logits,
                 cudagraph_stats=cudagraph_stats,
-<<<<<<< HEAD
                 routed_experts=None,
-=======
                 entropy=entropy_lists,
+                variance=variance_lists,
             )
 
         if not self.use_async_scheduling:
@@ -4768,11 +4765,9 @@ class GPUModelRunner(
                 invalid_req_indices=invalid_req_indices,
                 async_output_copy_stream=self._get_or_create_async_output_copy_stream(),
                 vocab_size=self.input_batch.vocab_size,
-<<<<<<< HEAD
                 routed_experts=routed_experts_snapshot,
-=======
                 entropy=sampler_output.entropy,
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
+                variance=sampler_output.variance,
             )
         with record_function_or_nullcontext(
             "gpu_model_runner: set_async_sampled_token_ids"

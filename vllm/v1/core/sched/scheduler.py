@@ -1678,8 +1678,6 @@ class Scheduler(SchedulerInterface):
             ):
                 new_logprobs = logprobs.slice_request(req_index, len(new_token_ids))
 
-<<<<<<< HEAD
-=======
             # Extract per-token entropy if needed.
             if (
                 request.sampling_params is not None
@@ -1695,20 +1693,6 @@ class Scheduler(SchedulerInterface):
                 and variance is not None
             ):
                 new_variance = variance[req_index]
-
-            if new_token_ids and self.structured_output_manager.should_advance(request):
-                struct_output_request = request.structured_output_request
-                assert struct_output_request is not None
-                assert struct_output_request.grammar is not None
-                ok = struct_output_request.grammar.accept_tokens(req_id, new_token_ids)
-                if not ok:
-                    logger.warning(
-                        "Unexpected: grammar rejected tokens %s for request %s.",
-                        new_token_ids,
-                        req_id,
-                    )
-
->>>>>>> 4cf559d7e (return logprob entropy memory efficient)
             if num_nans_in_logits is not None and req_id in num_nans_in_logits:
                 request.num_nans_in_logits = num_nans_in_logits[req_id]
 
