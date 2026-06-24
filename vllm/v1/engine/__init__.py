@@ -198,6 +198,8 @@ class EngineCoreOutput(
     routed_experts: np.ndarray | None = None
     # Per-token Shannon entropy H = -sum(p * log(p)).
     entropy: list[float] | None = None
+    # Per-token variance of log-probabilities Var_p[log(p)].
+    variance: list[float] | None = None
     # The number of NaNs in logits.
     # A value greater than 0 indicates that the output is corrupted.
     num_nans_in_logits: int = 0

@@ -41,6 +41,9 @@ class AsyncOutput(AsyncModelRunnerOutput):
             self.entropy_cpu: np.ndarray | None = None
             if sampler_output.entropy is not None:
                 self.entropy_cpu = async_copy_to_np(sampler_output.entropy)
+            self.variance_cpu: np.ndarray | None = None
+            if sampler_output.variance is not None:
+                self.variance_cpu = async_copy_to_np(sampler_output.variance)
             self.num_sampled_tokens_np = async_copy_to_np(num_sampled_tokens)
             self.prompt_logprobs_dict = {
                 k: v.to_cpu_nonblocking() if v is not None else None
@@ -79,6 +82,16 @@ class AsyncOutput(AsyncModelRunnerOutput):
                 entropy_lists.append(entropy_list[offset:offset + n])
                 offset += n
             self.model_runner_output.entropy = entropy_lists
+
+        if self.variance_cpu is not None:
+            variance_list = self.variance_cpu.tolist()
+            num_sampled = self.num_sampled_tokens_np.tolist()
+            variance_lists: list[list[float]] = []
+            offset = 0
+            for n in num_sampled:
+                variance_lists.append(variance_list[offset:offset + n])
+                offset += n
+            self.model_runner_output.variance = variance_lists
 
         return self.model_runner_output
 

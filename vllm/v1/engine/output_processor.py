@@ -191,6 +191,8 @@ class RequestState:
 
         # Per-token entropy accumulation
         self.entropy: list[float] | None = [] if output_exact_entropy else None
+        # Per-token variance accumulation
+        self.variance: list[float] | None = [] if output_exact_entropy else None
 
     def apply_streaming_update(self, update: StreamingUpdate) -> None:
         # Apply the update to the request state.
@@ -413,6 +415,11 @@ class RequestState:
             entropy = entropy[-len(token_ids):]
 >>>>>>> 4cf559d7e (return logprob entropy memory efficient)
 
+        # Prepare variance, based on delta mode
+        variance = self.variance
+        if delta and variance:
+            variance = variance[-len(token_ids):]
+
         return CompletionOutput(
             index=self.request_index,
             text=text,
@@ -420,6 +427,7 @@ class RequestState:
             routed_experts=routed_experts,
             logprobs=logprobs,
             entropy=entropy,
+            variance=variance,
             cumulative_logprob=self.logprobs_processor.cumulative_logprob,
             finish_reason=str(finish_reason) if finished else None,
             stop_reason=stop_reason if finished else None,
@@ -666,6 +674,11 @@ class OutputProcessor:
                 if (engine_core_output.entropy is not None
                         and req_state.entropy is not None):
                     req_state.entropy.extend(engine_core_output.entropy)
+
+                # 3c) Accumulate per-token variance if requested.
+                if (engine_core_output.variance is not None
+                        and req_state.variance is not None):
+                    req_state.variance.extend(engine_core_output.variance)
 
             # 4) Create and handle RequestOutput objects.
             if request_output := req_state.make_request_output(

@@ -191,6 +191,7 @@ class SamplerOutput:
     sampled_token_ids: torch.Tensor
     logprobs_tensors: LogprobsTensors | None
     entropy: torch.Tensor | None = None  # [num_reqs], float32
+    variance: torch.Tensor | None = None  # [num_reqs], float32
 
 
 @dataclass
@@ -298,6 +299,9 @@ class ModelRunnerOutput:
     # Per-token Shannon entropy: list[list[float]], outer=requests, inner=tokens
     entropy: list[list[float]] | None = None
 >>>>>>> 4cf559d7e (return logprob entropy memory efficient)
+
+    # Per-token variance of log-probabilities: list[list[float]]
+    variance: list[list[float]] | None = None
 
 
 # ModelRunnerOutput wrapper for async scheduling.

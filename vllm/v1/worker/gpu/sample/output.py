@@ -17,4 +17,8 @@ class SamplerOutput:
     num_rejected: torch.Tensor | None = None
 =======
     entropy: torch.Tensor | None = None  # [num_reqs], float32
+<<<<<<< HEAD
 >>>>>>> 4cf559d7e (return logprob entropy memory efficient)
+=======
+    variance: torch.Tensor | None = None  # [num_reqs], float32
+>>>>>>> 7600be7a1 (add exact analytic variance)
